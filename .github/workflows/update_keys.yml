@@ -2,20 +2,20 @@ name: Update VLESS Keys
 
 on:
   schedule:
-    - cron: '0 * * * *' # запуск в начале каждого часа
-  workflow_dispatch:
+    - cron: '0 * * * *'  # Запуск в начале каждого часа
+  workflow_dispatch:      # Кнопка для ручного запуска
 
 permissions:
-  contents: write
+  contents: write        # Разрешение на запись в репозиторий
 
 jobs:
-  update:
+  run-script:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -23,12 +23,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run filter script
-        env:
-          RAW_URL: ${{ secrets.RAW_URL }}      # Рекомендуется хранить URL в Secret
-          OUTPUT_FILE: filtered_vless_keys.txt
-          FORBIDDEN_FLAG: "🇷🇺"
-          MAX_CHECK: "100"
+      - name: Run filtering script
         run: python filter_keys.py
 
       - name: Commit and push changes
@@ -37,8 +32,9 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add filtered_vless_keys.txt
           if git diff --staged --quiet; then
-            echo "No changes to commit"
+            echo "Изменений нет"
           else
-            git commit -m "Auto-update: Filtered VLESS keys"
+            git commit -m "Auto-update: Filtered keys (removed RU flags)"
             git push
           fi
+
