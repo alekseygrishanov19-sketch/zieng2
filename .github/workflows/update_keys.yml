@@ -2,20 +2,20 @@ name: Update VLESS Keys
 
 on:
   schedule:
-    - cron: '0 * * * *' # Строго раз в час
-  workflow_dispatch:     # Кнопка для ручного запуска
+    - cron: '0 * * * *' # запуск в начале каждого часа
+  workflow_dispatch:
 
 permissions:
-  contents: write       # Даем права на запись файлов в репозиторий
+  contents: write
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
@@ -23,7 +23,12 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
-      - name: Run key filtering script
+      - name: Run filter script
+        env:
+          RAW_URL: ${{ secrets.RAW_URL }}      # Рекомендуется хранить URL в Secret
+          OUTPUT_FILE: filtered_vless_keys.txt
+          FORBIDDEN_FLAG: "🇷🇺"
+          MAX_CHECK: "100"
         run: python filter_keys.py
 
       - name: Commit and push changes
