@@ -1,53 +1,43 @@
-    # filter_keys.py
-    import requests
-    from datetime import datetime
+import os
+import requests
+from datetime import datetime
 
-    # --- НАСТРОЙКИ ---
-    # Ссылка на RAW файл с гитхаба (!!! ЗАМЕНИ НА СВОЮ !!!)
-    RAW_URL = "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt" 
-    # Имя файла, куда сохранять результат (будет в репозитории)
-    OUTPUT_FILE = "filtered_vless_keys.txt"
-    # Флаг, который ищем (русский флаг)
-    FORBIDDEN_FLAG = "🇷🇺"
+# Настройки через переменные окружения (можно задать в workflow)
+RAW_URL = os.getenv("RAW_URL", "https://raw.githubusercontent.com/zieng2/wl/refs/heads/main/vless_lite.txt")
+OUTPUT_FILE = os.getenv("OUTPUT_FILE", "filtered_vless_keys.txt")
+FORBIDDEN_FLAG = os.getenv("FORBIDDEN_FLAG", "🇷🇺")
+MAX_CHECK = int(os.getenv("MAX_CHECK", "100"))  # проверяем только первые N строк
 
-    def update_keys():
-        try:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Начало обновления ключей...")
-            
-            # Получаем данные по ссылке
-            response = requests.get(RAW_URL)
-            response.raise_for_status() # Проверка на ошибки при скачивании
-            
-            # Декодируем и разбиваем на строки
-            content = response.text
-            lines = content.strip().split('\n')
-            
-            initial_count = len(lines)
-            
-            # Фильтруем: оставляем только те строки, где нет русского флага
-            # Дополнительная проверка, что строка не пустая, если вдруг там такие есть
-            filtered_lines = [line for line in lines if line and FORBIDDEN_FLAG not in line]
-            
-            removed_count = initial_count - len(filtered_lines)
-            
-            print(f"Всего ключей: {initial_count}, удалено с флагом '{FORBIDDEN_FLAG}': {removed_count}, осталось: {len(filtered_lines)}")
-            
-            return filtered_lines
+def main():
+    try:
+        print(f"[{datetime.utcnow().isoformat()}] Downloading: {RAW_URL}")
+        resp = requests.get(RAW_URL, timeout=30)
+        resp.raise_for_status()
+        lines = resp.text.splitlines()
+        total = len(lines)
+        to_check = min(MAX_CHECK, total)
+        print(f"Total lines: {total}. Will check first {to_check} lines for forbidden flag.")
 
-        except requests.exceptions.RequestException as e:
-            print(f"Ошибка при получении данных: {e}")
-            return None
-        except Exception as e:
-            print(f"Произошла непредвиденная ошибка: {e}")
-            return None
+        removed = 0
+        filtered = []
+        for idx, line in enumerate(lines):
+            if idx < to_check and FORBIDDEN_FLAG in line:
+                removed += 1
+                continue
+            # optionally skip empty lines
+            if line.strip() == "":
+                continue
+            filtered.append(line)
 
-    if __name__ == "__main__":
-        filtered_keys = update_keys()
-        
-        if filtered_keys is not None:
-            # Сохраняем в файл
-            with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-                f.write("\n".join(filtered_keys))
-            print(f"Результат сохранен в файл {OUTPUT_FILE}")
-        else:
-            print("Не удалось обновить ключи. Файл результата не создан.")
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(filtered))
+
+        print(f"Done. Removed {removed} lines with flag. Saved {len(filtered)} lines to {OUTPUT_FILE}.")
+        return 0
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())
