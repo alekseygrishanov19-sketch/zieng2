@@ -1,46 +1,39 @@
-    # .github/workflows/update_keys.yml
-    name: Update VLESS Keys
+name: Update VLESS Keys
 
-    on:
-      # Запускаем раз в день (в 00:00 UTC)
-      schedule:
-        - cron: '0 0 * * *' # Можешь изменить время, например, '30 1 * * *' для 01:30 UTC
-      
-      # Можно также запускать вручную через UI GitHub
-      workflow_dispatch:
+on:
+  schedule:
+    - cron: '0 * * * *' # Строго раз в час
+  workflow_dispatch:     # Кнопка для ручного запуска
 
-    jobs:
-      build:
-        runs-on: ubuntu-latest # Используем виртуальную машину с Ubuntu
+permissions:
+  contents: write       # Даем права на запись файлов в репозиторий
 
-        steps:
-        - name: Checkout repository # Шаг 1: Скачиваем код репозитория
-          uses: actions/checkout@v4
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Set up Python # Шаг 2: Настраиваем Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.x' # Указываем версию Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-        - name: Install dependencies # Шаг 3: Устанавливаем нужные библиотеки
-          run: pip install requests
+      - name: Install dependencies
+        run: pip install requests
 
-        - name: Run key filtering script # Шаг 4: Запускаем наш Python скрипт
-          run: python filter_keys.py
-          env:
-            # Здесь можно передать переменные окружения, если нужно
-            # Например, если URL будет храниться как секрет
-            # RAW_URL: ${{ secrets.MY_RAW_URL }}
+      - name: Run key filtering script
+        run: python filter_keys.py
 
-        - name: Commit and push filtered keys # Шаг 5: Фиксируем изменения и отправляем обратно
-          run: |
-            git config --global user.name 'github-actions[bot]'
-            git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-            git add filtered_vless_keys.txt # Добавляем измененный файл
-            # Проверяем, есть ли что-то для коммита
-            if ! git diff --staged --quiet; then
-              git commit -m "Auto-update: Filtered VLESS keys"
-              git push
-            else
-              echo "No changes to commit."
-            fi
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add filtered_vless_keys.txt
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Auto-update: Filtered VLESS keys"
+            git push
+          fi
